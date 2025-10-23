@@ -269,7 +269,14 @@ def url_to_slug(url: str) -> str:
     return slug
 
 
-def archive_entry(url: str, archive_dir: Path, entry_id: int) -> str | None:
+def archive_entry(
+    url: str,
+    archive_dir: Path,
+    entry_id: int,
+    no_video: bool = True,
+    no_audio: bool = True,
+    no_js: bool = True,
+) -> str | None:
     """
     Archive a web page using monolith.
 
@@ -277,6 +284,9 @@ def archive_entry(url: str, archive_dir: Path, entry_id: int) -> str | None:
         url: URL to archive
         archive_dir: Directory to save archived files
         entry_id: Entry ID for fallback naming
+        no_video: Remove video sources (default: True)
+        no_audio: Remove audio sources (default: True)
+        no_js: Remove JavaScript (default: True)
 
     Returns:
         Relative path to the archived file, or None if archiving fails
@@ -290,10 +300,19 @@ def archive_entry(url: str, archive_dir: Path, entry_id: int) -> str | None:
         output_path = archive_dir / filename
 
         # Run monolith to archive the page
+        # Build command with optional flags based on configuration
         logging.info(f"Archiving to: {filename}")
 
+        cmd = ["monolith", url, "-o", str(output_path)]
+        if no_video:
+            cmd.append("--no-video")
+        if no_audio:
+            cmd.append("--no-audio")
+        if no_js:
+            cmd.append("--no-js")
+
         result = subprocess.run(
-            ["monolith", url, "-o", str(output_path)],
+            cmd,
             capture_output=True,
             text=True,
             timeout=60,
@@ -331,6 +350,9 @@ def load_config(config_path: str = "config.toml") -> dict:
         "kagi_engine": "cecil",
         "kagi_summary_type": "summary",
         "log_level": "INFO",
+        "monolith_no_video": True,
+        "monolith_no_audio": True,
+        "monolith_no_js": True,
     }
 
     config_file = Path(config_path)
@@ -415,6 +437,73 @@ def render_html(output_data: dict, output_file: Path) -> None:
         f.write(html_content)
 
     logging.info(f"Generated HTML page: {output_file}")
+
+
+def render_content_archive(entry: dict, archive_dir: Path) -> str | None:
+    """
+    Render a content archive HTML file for a single entry using Jinja2 template.
+
+    Args:
+        entry: Entry dictionary containing content and metadata
+        archive_dir: Directory to save the content archive file
+
+    Returns:
+        Relative path to the content archive file, or None if rendering fails
+
+    Raises:
+        IOError: If template cannot be read or HTML cannot be written
+    """
+    try:
+        # Generate filename with 'content-' prefix to avoid collision with monolith archives
+        entry_id = entry.get("id")
+        slug = url_to_slug(entry.get("url", ""))
+        filename = f"content-{entry_id}_{slug}.html"
+        output_path = archive_dir / filename
+
+        # Set up Jinja2 environment
+        template_dir = Path(__file__).parent / "templates"
+        env = Environment(loader=FileSystemLoader(template_dir))
+
+        # Add custom filter for date formatting
+        def format_date(date_string: str) -> str:
+            """Convert ISO date to readable format (e.g., 'Jan 15, 2024')"""
+            try:
+                if not date_string:
+                    return ""
+                # Parse ISO format and format as "Jan 15, 2024"
+                dt = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+                return dt.strftime("%b %d, %Y")
+            except (ValueError, AttributeError):
+                # If parsing fails, return first 10 chars as fallback
+                return date_string[:10] if date_string else ""
+
+        env.filters["format_date"] = format_date
+
+        template = env.get_template("entry.html")
+
+        # Render template with entry data
+        html_content = template.render(
+            title=entry.get("title", "Untitled"),
+            url=entry.get("url", ""),
+            published=format_date(entry.get("published", "")),
+            created_at=format_date(entry.get("created_at", "")),
+            entry_type=entry.get("entry_type", "page"),
+            content=entry.get("content", ""),
+            archive_file=entry.get("archive_file", ""),
+        )
+
+        # Write to file
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        logging.info(f"Generated content archive: {filename}")
+
+        # Return relative path from dist directory
+        return f"archive/{filename}"
+
+    except Exception as e:
+        logging.warning(f"Failed to render content archive for entry {entry.get('id')}: {e}")
+        return None
 
 
 def main():
@@ -516,6 +605,9 @@ def main():
         entries = list(all_entries.values())
         logging.info(f"Total unique entries: {len(entries)}")
 
+        # Create a mapping from entry ID to full entry data (for content archive generation)
+        full_entries_map = {entry["id"]: entry for entry in entries}
+
         # Print entries
         for entry in entries:
             logging.debug(f"ID: {entry.get('id')}")
@@ -537,8 +629,10 @@ def main():
                 "published": entry.get("published"),
                 "created_at": entry.get("created_at"),
                 "entry_type": entry.get("entry_type"),
+                "content": entry.get("content", ""),
                 "tldr": "",
                 "archive_file": "",
+                "content_archive_file": "",
             }
             filtered_entries.append(filtered_entry)
 
@@ -622,10 +716,28 @@ def main():
                         if summary:
                             entry["tldr"] = summary
 
-                    # Archive the page
-                    archive_path = archive_entry(url, archive_dir, entry_id)
+                    # Archive the page using monolith
+                    archive_path = archive_entry(
+                        url,
+                        archive_dir,
+                        entry_id,
+                        no_video=config.get("monolith_no_video", True),
+                        no_audio=config.get("monolith_no_audio", True),
+                        no_js=config.get("monolith_no_js", True),
+                    )
                     if archive_path:
                         entry["archive_file"] = archive_path
+
+                    # Generate content archive from Feedbin content
+                    if entry.get("content"):
+                        # Get full entry data with content field
+                        full_entry = full_entries_map.get(entry_id)
+                        if full_entry:
+                            # Create a combined entry dict with both filtered and full data
+                            archive_entry_data = {**entry, "content": full_entry.get("content", "")}
+                            content_archive_path = render_content_archive(archive_entry_data, archive_dir)
+                            if content_archive_path:
+                                entry["content_archive_file"] = content_archive_path
 
                     # Be respectful to APIs - add a small delay between requests
                     if i < len(new_entries_to_add):

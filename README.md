@@ -1,4 +1,4 @@
-# Breadcrumbs: Archiving and Summarizing Your Stars and Page from Feedbin 🍔
+# Breadcrumbs: Archiving and Summarizing Your Stars and Pages from Feedbin 🍔
 
 A Python tool to archive your Feedbin starred articles and Pages feed entries with automatic AI-powered summaries using Kagi's Universal Summarizer.
 
@@ -6,7 +6,9 @@ A Python tool to archive your Feedbin starred articles and Pages feed entries wi
 
 - Fetches entries from your Feedbin "Pages" feed and starred articles
 - Generates AI summaries for new entries using Kagi's Universal Summarizer API
-- Archives full web pages using monolith (self-contained HTML with embedded resources)
+- **Dual archiving system**:
+  - Full web page archives using monolith (self-contained HTML with embedded resources)
+  - Content archives from Feedbin's extracted content (clean, reader-friendly HTML)
 - **Beautiful web interface** - Browse and search your entries with a Feedbin-inspired UI
 - Merges new entries with existing data while preserving history
 - Automatically backs up data with timestamps before updates
@@ -54,6 +56,9 @@ output_dir = "./dist"
 kagi_engine = "cecil"
 kagi_summary_type = "summary"
 log_level = "INFO"
+monolith_no_video = true
+monolith_no_audio = true
+monolith_no_js = true
 ```
 
 You can customize:
@@ -61,6 +66,9 @@ You can customize:
 - **`kagi_engine`**: Summarization engine - `"cecil"` (fast, friendly), `"agnes"` (formal, technical), or `"muriel"` (premium, $1/summary)
 - **`kagi_summary_type`**: Output format - `"summary"` (full summary) or `"takeaway"` (key points)
 - **`log_level`**: Logging verbosity - `"DEBUG"`, `"INFO"` (default), `"WARNING"`, `"ERROR"`, or `"CRITICAL"`
+- **`monolith_no_video`**: Remove videos from web archives (default: `true` - reduces file size)
+- **`monolith_no_audio`**: Remove audio from web archives (default: `true` - reduces file size)
+- **`monolith_no_js`**: Remove JavaScript from web archives (default: `true` - improves stability and reduces file size)
 
 ## Usage
 
@@ -78,6 +86,7 @@ The script will:
 5. For each new entry:
    - Generate AI summary via Kagi API (if API key provided)
    - Archive the full web page using monolith
+   - Create a content archive from Feedbin's extracted content
 6. Save to `dist/data/data.json` with backup of previous version
 7. Generate a beautiful HTML interface at `dist/index.html`
 
@@ -93,7 +102,7 @@ The interface includes:
 - **Real-time search** - Filter entries by title, URL, or summary
 - **Type filters** - View all entries, just pages (📄), or just starred (⭐)
 - **Expandable summaries** - Long summaries collapse to 3 lines with a "Show more +" button
-- **Quick access** - Links to original URLs and archived pages
+- **Quick access** - Links to original URLs, reader view (📖), and web archives (🗃️)
 - **Responsive design** - Works great on desktop and mobile
 - **Keyboard shortcuts** - Press Cmd/Ctrl + K to focus search
 
@@ -112,8 +121,10 @@ Data is saved in `dist/data/data.json`:
       "published": "2024-01-15T08:00:00.000000Z",
       "created_at": "2024-01-15T08:05:00.000000Z",
       "entry_type": "page",
+      "content": "Feedbin-extracted article content (HTML)...",
       "tldr": "AI-generated summary of the article...",
-      "archive_file": "archive/12345_example.com_article.html"
+      "archive_file": "archive/12345_example.com_article.html",
+      "content_archive_file": "archive/content-12345_example.com_article.html"
     }
   ]
 }
@@ -126,10 +137,24 @@ Data is saved in `dist/data/data.json`:
 
 ### Archive Files
 
-Each entry's web page is archived as a self-contained HTML file using [monolith](https://github.com/Y2Z/monolith):
+Breadcrumbs creates two types of archives for each entry:
+
+#### 1. Content Archives (Recommended for Reading)
+Generated from Feedbin's extracted content field:
+- Stored in `dist/archive/` directory
+- Filename format: `content-{entry_id}_{url_slug}.html`
+- Clean, reader-friendly HTML with article content
+- Styled with the same Feedbin-inspired dark theme as the main interface
+- Fast to load and easy to read
+- The `content_archive_file` field contains the relative path (e.g., `archive/content-12345_example.com_article.html`)
+
+#### 2. Web Archives (Full Page Preservation)
+Generated using [monolith](https://github.com/Y2Z/monolith):
 - Stored in `dist/archive/` directory
 - Filename format: `{entry_id}_{url_slug}.html`
-- Contains all CSS, images, and resources embedded inline
+- Complete web page with all CSS, images, and resources embedded inline
+- Preserves the exact look of the original page
+- Larger file sizes due to embedded resources
 - The `archive_file` field contains the relative path (e.g., `archive/12345_example.com_article.html`)
 
 ## Directory Structure
@@ -139,14 +164,16 @@ Each entry's web page is archived as a self-contained HTML file using [monolith]
 ├── config.toml          # Configuration file
 ├── breadcrumbs.py       # Main script
 ├── templates/
-│   └── index.html       # Jinja2 template for web interface
+│   ├── index.html       # Jinja2 template for web interface
+│   └── entry.html       # Jinja2 template for content archives
 ├── dist/
 │   ├── index.html       # Generated web interface
 │   ├── data/
 │   │   ├── data.json              # Current data
 │   │   └── data-YYYYMMDD-HHMMSS.json  # Timestamped backups
 │   ├── archive/
-│   │   └── {entry_id}_{url_slug}.html  # Archived web pages
+│   │   ├── content-{entry_id}_{url_slug}.html  # Content archives (Feedbin extracted)
+│   │   └── {entry_id}_{url_slug}.html          # Full page archives (monolith)
 │   └── logs/
 │       └── breadcrumbs-YYYYMMDD-HHMMSS.log  # Execution logs
 ```

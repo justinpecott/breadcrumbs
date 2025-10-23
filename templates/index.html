@@ -426,10 +426,16 @@
                         <span>🔗</span>
                         <span>Visit Original</span>
                     </a>
+                    {% if entry.content_archive_file %}
+                    <a href="{{ entry.content_archive_file }}" class="btn">
+                        <span>📖</span>
+                        <span>Reader View</span>
+                    </a>
+                    {% endif %}
                     {% if entry.archive_file %}
                     <a href="{{ entry.archive_file }}" class="btn">
-                        <span>📄</span>
-                        <span>View Archive</span>
+                        <span>🗃️</span>
+                        <span>Web Archive</span>
                     </a>
                     {% endif %}
                 </div>
