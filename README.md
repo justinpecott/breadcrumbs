@@ -68,6 +68,32 @@ Run the script:
 uv run python breadcrumbs.py
 ```
 
+### How It Works
+
+```mermaid
+graph TD
+    A[Start] --> B[Load config.toml]
+    B --> C[Fetch Feedbin Pages Feed]
+    B --> D[Fetch Starred Entries]
+    C --> E[Merge & Deduplicate]
+    D --> E
+    E --> F[Load existing data.json]
+    F --> G{Any new entries?}
+    G -->|No| M[Generate index.html]
+    G -->|Yes| H[Backup data.json]
+    H --> I[Process Each New Entry]
+    I --> J[Generate AI Summary<br/>Kagi API]
+    J --> K[Create Web Archive<br/>monolith]
+    K --> L[Create Reader View<br/>Feedbin content]
+    L --> I
+    I -->|All processed| M[Generate index.html]
+    M --> N[Done!]
+
+    style J fill:#a855f7,stroke:#7c3aed,color:#fff
+    style K fill:#0867e2,stroke:#0651b5,color:#fff
+    style L fill:#0867e2,stroke:#0651b5,color:#fff
+```
+
 The script will:
 1. Load configuration from `config.toml`
 2. Fetch all entries from your Feedbin "Pages" feed
