@@ -1,12 +1,13 @@
 # Breadcrumbs: Archiving and Summarizing Your Stars and Page from Feedbin 🍔
 
-A Python tool to manage your Feedbin starred articles and Pages feed entries with automatic AI-powered summaries using Kagi's Universal Summarizer.
+A Python tool to archive your Feedbin starred articles and Pages feed entries with automatic AI-powered summaries using Kagi's Universal Summarizer.
 
 ## Features
 
 - Fetches entries from your Feedbin "Pages" feed and starred articles
 - Generates AI summaries for new entries using Kagi's Universal Summarizer API
 - Archives full web pages using monolith (self-contained HTML with embedded resources)
+- **Beautiful web interface** - Browse and search your entries with a Feedbin-inspired UI
 - Merges new entries with existing data while preserving history
 - Automatically backs up data with timestamps before updates
 - Outputs structured JSON with entry metadata and summaries
@@ -76,6 +77,23 @@ The script will:
    - Generate AI summary via Kagi API (if API key provided)
    - Archive the full web page using monolith
 6. Save to `dist/data/data.json` with backup of previous version
+7. Generate a beautiful HTML interface at `dist/index.html`
+
+### Viewing Your Entries
+
+Open `dist/index.html` in your browser to access the web interface:
+
+```bash
+open dist/index.html
+```
+
+The interface includes:
+- **Real-time search** - Filter entries by title, URL, or summary
+- **Type filters** - View all entries, just pages (📄), or just starred (⭐)
+- **Expandable summaries** - Long summaries collapse to 3 lines with a "Show more +" button
+- **Quick access** - Links to original URLs and archived pages
+- **Responsive design** - Works great on desktop and mobile
+- **Keyboard shortcuts** - Press Cmd/Ctrl + K to focus search
 
 ## Output Structure
 
@@ -118,7 +136,10 @@ Each entry's web page is archived as a self-contained HTML file using [monolith]
 .
 ├── config.toml          # Configuration file
 ├── breadcrumbs.py       # Main script
+├── templates/
+│   └── index.html       # Jinja2 template for web interface
 ├── dist/
+│   ├── index.html       # Generated web interface
 │   ├── data/
 │   │   ├── data.json              # Current data
 │   │   └── data-YYYYMMDD-HHMMSS.json  # Timestamped backups
@@ -137,3 +158,12 @@ Each entry's web page is archived as a self-contained HTML file using [monolith]
 - Python 3.14+
 - [monolith](https://github.com/Y2Z/monolith) - Command-line tool for archiving web pages
 - Dependencies managed via `pyproject.toml` (installed with `uv sync`)
+
+## Credits
+
+Created by [Justin Pecott](https://github.com/justinpecott) with significant contributions from Claude (Anthropic). The beautiful web interface, archiving functionality, and overall architecture were developed collaboratively through an iterative design process.
+
+Special thanks to:
+- [Feedbin](https://feedbin.com) for the excellent RSS reader that inspired this tool
+- [Kagi](https://kagi.com) for the Universal Summarizer API
+- The creators of [monolith](https://github.com/Y2Z/monolith) for the web archiving tool

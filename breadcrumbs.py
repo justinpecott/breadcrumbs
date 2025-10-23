@@ -11,6 +11,7 @@ import time
 import subprocess
 import re
 from urllib.parse import urlparse
+from jinja2 import Environment, FileSystemLoader
 
 
 def get_subscriptions(email: str, password: str) -> list[dict]:
@@ -298,6 +299,65 @@ def load_config(config_path: str = "config.toml") -> dict:
         return default_config
 
 
+def render_html(output_data: dict, output_file: Path) -> None:
+    """
+    Render HTML page from entry data using Jinja2 template.
+
+    Args:
+        output_data: Dictionary containing entries and metadata
+        output_file: Path to save the HTML file
+
+    Raises:
+        IOError: If template cannot be read or HTML cannot be written
+    """
+    # Set up Jinja2 environment
+    template_dir = Path(__file__).parent / "templates"
+    env = Environment(loader=FileSystemLoader(template_dir))
+
+    # Add custom filter for date formatting
+    def format_date(date_string: str) -> str:
+        """Convert ISO date to readable format (e.g., 'Jan 15, 2024')"""
+        try:
+            if not date_string:
+                return ""
+            # Parse ISO format and format as "Jan 15, 2024"
+            dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+            return dt.strftime("%b %d, %Y")
+        except (ValueError, AttributeError):
+            # If parsing fails, return first 10 chars as fallback
+            return date_string[:10] if date_string else ""
+
+    # Add custom filter for datetime formatting
+    def format_datetime(date_string: str) -> str:
+        """Convert ISO datetime to readable format (e.g., 'Jan 15, 2024 at 3:45 PM')"""
+        try:
+            if not date_string:
+                return ""
+            # Parse ISO format and format as "Jan 15, 2024 at 3:45 PM"
+            dt = datetime.fromisoformat(date_string.replace('Z', '+00:00'))
+            return dt.strftime("%b %d, %Y at %I:%M %p")
+        except (ValueError, AttributeError):
+            # If parsing fails, return the original string
+            return date_string
+
+    env.filters['format_date'] = format_date
+    env.filters['format_datetime'] = format_datetime
+
+    template = env.get_template("index.html")
+
+    # Render template with data
+    html_content = template.render(
+        entries=output_data.get("entries", []),
+        generated_at=output_data.get("generated_at", "")
+    )
+
+    # Write to file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+
+    print(f"Generated HTML page: {output_file}")
+
+
 def main():
     # Load configuration
     config = load_config()
@@ -520,6 +580,11 @@ def main():
             json.dump(output_data, f, indent=2, ensure_ascii=False)
 
         print(f"\nWrote {len(existing_entries)} total entries to {output_file}")
+
+        # Generate HTML page
+        html_file = dist_dir / "index.html"
+        print(f"\nGenerating HTML page...")
+        render_html(output_data, html_file)
 
     except requests.HTTPError as e:
         if e.response.status_code == 401:
