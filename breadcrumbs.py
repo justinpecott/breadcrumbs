@@ -8,6 +8,9 @@ from pathlib import Path
 import requests
 from requests.auth import HTTPBasicAuth
 import time
+import subprocess
+import re
+from urllib.parse import urlparse
 
 
 def get_subscriptions(email: str, password: str) -> list[dict]:
@@ -160,6 +163,97 @@ def summarize_with_kagi(url: str, api_key: str, engine: str = "cecil", summary_t
         return result.get("data", {}).get("output")
     except requests.RequestException as e:
         print(f"  Warning: Failed to summarize {url}: {e}")
+        return None
+
+
+def url_to_slug(url: str) -> str:
+    """
+    Convert a URL to a safe filename slug.
+
+    Args:
+        url: URL to convert
+
+    Returns:
+        Slug suitable for use as a filename
+    """
+    # Parse the URL
+    parsed = urlparse(url)
+
+    # Combine domain and path
+    slug_parts = []
+
+    # Add domain (remove www. prefix)
+    domain = parsed.netloc.replace('www.', '')
+    slug_parts.append(domain)
+
+    # Add path components (remove leading/trailing slashes)
+    path = parsed.path.strip('/')
+    if path:
+        slug_parts.append(path)
+
+    # Join with underscores and clean up
+    slug = '_'.join(slug_parts)
+
+    # Remove or replace special characters
+    slug = re.sub(r'[^\w\-.]', '_', slug)
+
+    # Remove consecutive underscores
+    slug = re.sub(r'_+', '_', slug)
+
+    # Trim to reasonable length (keep extension if present)
+    if len(slug) > 200:
+        slug = slug[:200]
+
+    # Remove trailing underscores/dashes
+    slug = slug.rstrip('_-')
+
+    return slug
+
+
+def archive_entry(url: str, archive_dir: Path, entry_id: int) -> str | None:
+    """
+    Archive a web page using monolith.
+
+    Args:
+        url: URL to archive
+        archive_dir: Directory to save archived files
+        entry_id: Entry ID for fallback naming
+
+    Returns:
+        Relative path to the archived file, or None if archiving fails
+    """
+    try:
+        # Generate filename from URL
+        slug = url_to_slug(url)
+
+        # Add entry ID to ensure uniqueness
+        filename = f"{entry_id}_{slug}.html"
+        output_path = archive_dir / filename
+
+        # Run monolith to archive the page
+        print(f"    Archiving to: {filename}")
+
+        result = subprocess.run(
+            ['monolith', url, '-o', str(output_path)],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0 and output_path.exists():
+            # Return relative path from dist directory
+            return f"archive/{filename}"
+        else:
+            print(f"    Warning: monolith failed with exit code {result.returncode}")
+            if result.stderr:
+                print(f"    Error: {result.stderr[:200]}")
+            return None
+
+    except subprocess.TimeoutExpired:
+        print(f"    Warning: Archiving timed out after 60 seconds")
+        return None
+    except Exception as e:
+        print(f"    Warning: Failed to archive {url}: {e}")
         return None
 
 
@@ -374,22 +468,38 @@ def main():
             if entry['id'] not in existing_ids:
                 new_entries_to_add.append(entry)
 
-        # Generate summaries for new entries
-        if new_entries_to_add and kagi_api_key:
-            print(f"\nGenerating summaries for {len(new_entries_to_add)} new entries...")
+        # Generate summaries and archive new entries
+        if new_entries_to_add:
+            if kagi_api_key:
+                print(f"\nGenerating summaries for {len(new_entries_to_add)} new entries...")
+            else:
+                print(f"\nProcessing {len(new_entries_to_add)} new entries...")
+
             for i, entry in enumerate(new_entries_to_add, 1):
                 url = entry.get('url')
+                entry_id = entry.get('id')
+
                 if url:
-                    print(f"  [{i}/{len(new_entries_to_add)}] Summarizing: {entry.get('title', 'Untitled')}")
-                    summary = summarize_with_kagi(
-                        url,
-                        kagi_api_key,
-                        engine=config["kagi_engine"],
-                        summary_type=config["kagi_summary_type"]
-                    )
-                    if summary:
-                        entry['tldr'] = summary
-                    # Be respectful to the API - add a small delay between requests
+                    print(f"  [{i}/{len(new_entries_to_add)}] Processing: {entry.get('title', 'Untitled')}")
+
+                    # Generate summary if API key is available
+                    if kagi_api_key:
+                        print(f"    Summarizing...")
+                        summary = summarize_with_kagi(
+                            url,
+                            kagi_api_key,
+                            engine=config["kagi_engine"],
+                            summary_type=config["kagi_summary_type"]
+                        )
+                        if summary:
+                            entry['tldr'] = summary
+
+                    # Archive the page
+                    archive_path = archive_entry(url, archive_dir, entry_id)
+                    if archive_path:
+                        entry['archive_file'] = archive_path
+
+                    # Be respectful to APIs - add a small delay between requests
                     if i < len(new_entries_to_add):
                         time.sleep(0.5)
                 else:
