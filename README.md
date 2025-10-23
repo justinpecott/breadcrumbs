@@ -53,12 +53,14 @@ On first run, a `config.toml` file will be created automatically with defaults:
 output_dir = "./dist"
 kagi_engine = "cecil"
 kagi_summary_type = "summary"
+log_level = "INFO"
 ```
 
 You can customize:
 - **`output_dir`**: Where to store data (default: `./dist`)
 - **`kagi_engine`**: Summarization engine - `"cecil"` (fast, friendly), `"agnes"` (formal, technical), or `"muriel"` (premium, $1/summary)
 - **`kagi_summary_type`**: Output format - `"summary"` (full summary) or `"takeaway"` (key points)
+- **`log_level`**: Logging verbosity - `"DEBUG"`, `"INFO"` (default), `"WARNING"`, `"ERROR"`, or `"CRITICAL"`
 
 ## Usage
 
@@ -143,8 +145,10 @@ Each entry's web page is archived as a self-contained HTML file using [monolith]
 │   ├── data/
 │   │   ├── data.json              # Current data
 │   │   └── data-YYYYMMDD-HHMMSS.json  # Timestamped backups
-│   └── archive/
-│       └── {entry_id}_{url_slug}.html  # Archived web pages
+│   ├── archive/
+│   │   └── {entry_id}_{url_slug}.html  # Archived web pages
+│   └── logs/
+│       └── breadcrumbs-YYYYMMDD-HHMMSS.log  # Execution logs
 ```
 
 ## Tools & APIs Used
