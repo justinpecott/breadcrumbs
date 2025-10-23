@@ -53,22 +53,12 @@ On first run, a `config.toml` file will be created automatically with defaults:
 
 ```toml
 output_dir = "./dist"
-kagi_engine = "cecil"
-kagi_summary_type = "summary"
 log_level = "INFO"
-monolith_no_video = true
-monolith_no_audio = true
-monolith_no_js = true
 ```
 
 You can customize:
 - **`output_dir`**: Where to store data (default: `./dist`)
-- **`kagi_engine`**: Summarization engine - `"cecil"` (fast, friendly), `"agnes"` (formal, technical), or `"muriel"` (premium, $1/summary)
-- **`kagi_summary_type`**: Output format - `"summary"` (full summary) or `"takeaway"` (key points)
 - **`log_level`**: Logging verbosity - `"DEBUG"`, `"INFO"` (default), `"WARNING"`, `"ERROR"`, or `"CRITICAL"`
-- **`monolith_no_video`**: Remove videos from web archives (default: `true` - reduces file size)
-- **`monolith_no_audio`**: Remove audio from web archives (default: `true` - reduces file size)
-- **`monolith_no_js`**: Remove JavaScript from web archives (default: `true` - improves stability and reduces file size)
 
 ## Usage
 

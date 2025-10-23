@@ -347,12 +347,7 @@ def load_config(config_path: str = "config.toml") -> dict:
     """
     default_config = {
         "output_dir": "./dist",
-        "kagi_engine": "cecil",
-        "kagi_summary_type": "summary",
         "log_level": "INFO",
-        "monolith_no_video": True,
-        "monolith_no_audio": True,
-        "monolith_no_js": True,
     }
 
     config_file = Path(config_path)
@@ -710,8 +705,8 @@ def main():
                         summary = summarize_with_kagi(
                             url,
                             kagi_api_key,
-                            engine=config["kagi_engine"],
-                            summary_type=config["kagi_summary_type"],
+                            engine="cecil",
+                            summary_type="summary",
                         )
                         if summary:
                             entry["tldr"] = summary
@@ -721,9 +716,9 @@ def main():
                         url,
                         archive_dir,
                         entry_id,
-                        no_video=config.get("monolith_no_video", True),
-                        no_audio=config.get("monolith_no_audio", True),
-                        no_js=config.get("monolith_no_js", True),
+                        no_video=True,
+                        no_audio=True,
+                        no_js=True,
                     )
                     if archive_path:
                         entry["archive_file"] = archive_path
