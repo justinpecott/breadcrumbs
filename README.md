@@ -165,7 +165,7 @@ Each entry's web page is archived as a self-contained HTML file using [monolith]
 
 ## Credits
 
-Created by [Justin Pecott](https://github.com/justinpecott) with significant contributions from Claude (Anthropic). The beautiful web interface, archiving functionality, and overall architecture were developed collaboratively through an iterative design process.
+Created by [Justin Pecott](https://github.com/justinpecott) with significant contributions from [Claude Code (Anthropic)](https://www.claude.com/product/claude-code). The beautiful web interface, archiving functionality, and overall architecture were developed collaboratively through an iterative design process.
 
 Special thanks to:
 - [Feedbin](https://feedbin.com) for the excellent RSS reader that inspired this tool

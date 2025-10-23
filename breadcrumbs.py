@@ -72,6 +72,7 @@ def get_subscriptions(email: str, password: str) -> list[dict]:
 def get_entries(email: str, password: str, subscription_id: int) -> list[dict]:
     """
     Fetch all entries for a specific subscription from Feedbin API.
+    Handles pagination to retrieve all entries (100 per page).
 
     Args:
         email: Feedbin account email
@@ -84,19 +85,36 @@ def get_entries(email: str, password: str, subscription_id: int) -> list[dict]:
     Raises:
         requests.HTTPError: If the API request fails
     """
+    all_entries = []
     url = f"https://api.feedbin.com/v2/feeds/{subscription_id}/entries.json"
-    # print(url)
-    # url = "https://api.feedbin.com/v2/entries.json"
-    # print(url)
-    response = requests.get(url, auth=HTTPBasicAuth(email, password))
+    page = 1
 
-    response.raise_for_status()
-    return response.json()
+    while url:
+        response = requests.get(url, auth=HTTPBasicAuth(email, password))
+        response.raise_for_status()
+
+        entries = response.json()
+        all_entries.extend(entries)
+        logging.debug(f"Fetched page {page} ({len(entries)} entries)")
+
+        # Check for next page in Link header
+        url = None
+        if "Link" in response.headers:
+            links = response.headers["Link"].split(", ")
+            for link in links:
+                if 'rel="next"' in link:
+                    # Extract URL from <URL>; rel="next" format
+                    url = link[link.find("<") + 1 : link.find(">")]
+                    page += 1
+                    break
+
+    return all_entries
 
 
 def get_starred_entries(email: str, password: str) -> list[dict]:
     """
-    Fetch all starred entries from Feedbin API.
+    Fetch all starred entry IDs from Feedbin API.
+    Handles pagination to retrieve all IDs (100 per page).
 
     Args:
         email: Feedbin account email
@@ -108,17 +126,36 @@ def get_starred_entries(email: str, password: str) -> list[dict]:
     Raises:
         requests.HTTPError: If the API request fails
     """
+    all_ids = []
     url = "https://api.feedbin.com/v2/starred_entries.json"
+    page = 1
 
-    response = requests.get(url, auth=HTTPBasicAuth(email, password))
+    while url:
+        response = requests.get(url, auth=HTTPBasicAuth(email, password))
+        response.raise_for_status()
 
-    response.raise_for_status()
-    return response.json()
+        ids = response.json()
+        all_ids.extend(ids)
+        logging.debug(f"Fetched starred IDs page {page} ({len(ids)} IDs)")
+
+        # Check for next page in Link header
+        url = None
+        if "Link" in response.headers:
+            links = response.headers["Link"].split(", ")
+            for link in links:
+                if 'rel="next"' in link:
+                    # Extract URL from <URL>; rel="next" format
+                    url = link[link.find("<") + 1 : link.find(">")]
+                    page += 1
+                    break
+
+    return all_ids
 
 
 def get_entries_by_ids(email: str, password: str, entry_ids: list[int]) -> list[dict]:
     """
     Fetch specific entries by their IDs from Feedbin API.
+    Handles batching if more than 100 IDs are provided.
 
     Args:
         email: Feedbin account email
@@ -131,15 +168,25 @@ def get_entries_by_ids(email: str, password: str, entry_ids: list[int]) -> list[
     Raises:
         requests.HTTPError: If the API request fails
     """
+    all_entries = []
     url = "https://api.feedbin.com/v2/entries.json"
 
-    # Feedbin API accepts comma-separated IDs as a query parameter
-    params = {"ids": ",".join(map(str, entry_ids))}
+    # Batch IDs in groups of 100 to avoid URL length issues
+    batch_size = 100
+    total_batches = (len(entry_ids) + batch_size - 1) // batch_size
 
-    response = requests.get(url, auth=HTTPBasicAuth(email, password), params=params)
+    for batch_num, i in enumerate(range(0, len(entry_ids), batch_size), 1):
+        batch = entry_ids[i : i + batch_size]
+        params = {"ids": ",".join(map(str, batch))}
 
-    response.raise_for_status()
-    return response.json()
+        response = requests.get(url, auth=HTTPBasicAuth(email, password), params=params)
+        response.raise_for_status()
+
+        entries = response.json()
+        all_entries.extend(entries)
+        logging.debug(f"Fetched entry batch {batch_num}/{total_batches} ({len(entries)} entries)")
+
+    return all_entries
 
 
 def summarize_with_kagi(
