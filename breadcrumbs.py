@@ -625,7 +625,8 @@ def main():
                 "created_at": entry.get("created_at"),
                 "entry_type": entry.get("entry_type"),
                 "content": entry.get("content", ""),
-                "tldr": "",
+                "summary": entry.get("summary", ""),  # Feedbin's summary
+                "tldr": "",  # AI-generated summary (will be filled later if available)
                 "archive_file": "",
                 "content_archive_file": "",
             }
@@ -702,14 +703,14 @@ def main():
                     # Generate summary if API key is available
                     if kagi_api_key:
                         logging.info("Summarizing...")
-                        summary = summarize_with_kagi(
+                        ai_summary = summarize_with_kagi(
                             url,
                             kagi_api_key,
                             engine="cecil",
                             summary_type="summary",
                         )
-                        if summary:
-                            entry["tldr"] = summary
+                        if ai_summary:
+                            entry["tldr"] = ai_summary
 
                     # Archive the page using monolith
                     archive_path = archive_entry(
@@ -748,6 +749,13 @@ def main():
 
         logging.info(f"Added {new_entries_count} new entries")
         logging.info(f"Total entries after merge: {len(existing_entries)}")
+
+        # Ensure all entries have both summary and tldr fields (for backward compatibility)
+        for entry in existing_entries:
+            if "summary" not in entry:
+                entry["summary"] = ""
+            if "tldr" not in entry:
+                entry["tldr"] = ""
 
         # Update output data with merged entries
         output_data["entries"] = existing_entries

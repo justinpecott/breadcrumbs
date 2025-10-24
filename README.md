@@ -1,19 +1,21 @@
-# Breadcrumbs: Archiving and Summarizing Your Stars and Pages from Feedbin 🍔
+# Breadcrumbs: A local archive of your pages and stars from Feedbin 🍔
 
 A Python tool to archive your Feedbin starred articles and Pages feed entries with automatic AI-powered summaries using Kagi's Universal Summarizer.
 
 ## Features
 
 - Fetches entries from your Feedbin "Pages" feed and starred articles
-- Generates AI summaries for new entries using Kagi's Universal Summarizer API
+- **Dual summary system**:
+  - 🍔 Feedbin's original summaries from the RSS feed
+  - ✨ AI-generated TL;DR using Kagi's Universal Summarizer API
 - **Dual archiving system**:
-  - Full web page archives using monolith (self-contained HTML with embedded resources)
-  - Content archives from Feedbin's extracted content (clean, reader-friendly HTML)
-- **Beautiful web interface** - Browse and search your entries with a Feedbin-inspired UI
+  - 📖 Reader View archives from Feedbin's extracted content (clean, reader-friendly HTML)
+  - 🗃️ Web archives using monolith (complete page with all resources, no video/audio/JS)
+- **Beautiful web interface** - Browse and search your entries with a Feedbin-inspired dark theme
 - Merges new entries with existing data while preserving history
 - Automatically backs up data with timestamps before updates
 - Outputs structured JSON with entry metadata and summaries
-- Configurable via TOML configuration file
+- Simple TOML configuration (just output directory and log level)
 
 ## Setup
 
@@ -45,7 +47,7 @@ export FEEDBIN_PASSWORD='your-password'
 export KAGI_API_KEY='your-kagi-api-key'
 ```
 
-Note: If `KAGI_API_KEY` is not set, the script will still run but won't generate summaries.
+Note: If `KAGI_API_KEY` is not set, the script will still run but won't generate AI TL;DR summaries (Feedbin summaries will still be available).
 
 ### 3. Configure (optional)
 
@@ -117,6 +119,7 @@ open dist/index.html
 The interface includes:
 - **Real-time search** - Filter entries by title, URL, or summary
 - **Type filters** - View all entries, just pages (📄), or just starred (⭐)
+- **Dual summaries** - 🍔 Feedbin summaries and ✨ AI TL;DR with distinct gradients
 - **Expandable summaries** - Long summaries collapse to 3 lines with a "Show more +" button
 - **Quick access** - Links to original URLs, reader view (📖), and web archives (🗃️)
 - **Responsive design** - Works great on desktop and mobile
@@ -138,7 +141,8 @@ Data is saved in `dist/data/data.json`:
       "created_at": "2024-01-15T08:05:00.000000Z",
       "entry_type": "page",
       "content": "Feedbin-extracted article content (HTML)...",
-      "tldr": "AI-generated summary of the article...",
+      "summary": "Original summary from the RSS feed...",
+      "tldr": "AI-generated TL;DR from Kagi...",
       "archive_file": "archive/12345_example.com_article.html",
       "content_archive_file": "archive/content-12345_example.com_article.html"
     }

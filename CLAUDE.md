@@ -4,15 +4,20 @@ This document provides context for Claude Code when working on this project.
 
 ## Project Overview
 
-**Purpose**: A Python tool that fetches Feedbin RSS entries (from the "Pages" feed and starred articles) and enriches them with AI-generated summaries from Kagi's Universal Summarizer API. It also archives the full web pages using monolith.
+**Purpose**: A Python tool that fetches Feedbin RSS entries (from the "Pages" feed and starred articles) with dual summaries (Feedbin RSS + AI-generated) and dual archiving (reader view + complete web page).
 
 **Key Features**:
 - Fetches entries from Feedbin API (Pages feed + starred articles)
-- Generates summaries using Kagi Universal Summarizer
-- Archives complete web pages using monolith (self-contained HTML)
+- Dual summary system:
+  - Preserves original Feedbin RSS feed summaries
+  - Generates AI TL;DR using Kagi Universal Summarizer (optional)
+- Dual archiving system:
+  - Reader view archives from Feedbin's extracted content
+  - Complete web page archives using monolith (no video/audio/JS)
+- Beautiful web interface with Feedbin-inspired dark theme
 - Merges new entries with existing data without duplicates
 - Automatic backup with timestamps before updates
-- TOML-based configuration
+- Simple TOML-based configuration (output_dir and log_level only)
 
 ## Architecture
 
@@ -28,8 +33,12 @@ This document provides context for Claude Code when working on this project.
 2. **Archiving**
    - `url_to_slug()` - Converts URLs to safe filenames
    - `archive_entry()` - Archives web pages using monolith CLI tool
-   - Creates self-contained HTML files with embedded resources
-   - Generates unique filenames: `{entry_id}_{url_slug}.html`
+     - Flags: `--no-video`, `--no-audio`, `--no-js` (hardcoded for cleaner archives)
+     - Creates self-contained HTML files with embedded resources
+     - Generates unique filenames: `{entry_id}_{url_slug}.html`
+   - `render_content_archive()` - Creates reader-friendly HTML from Feedbin content
+     - Uses Jinja2 template: `templates/entry.html`
+     - Generates unique filenames: `content-{entry_id}_{url_slug}.html`
 
 3. **Configuration**
    - `load_config()` - Loads/creates TOML config file
@@ -55,10 +64,12 @@ Load Existing data.json
 Identify New Entries
     ↓
 For Each New Entry:
-  - Generate Summary (Kagi API)
-  - Archive Page (monolith)
+  - Preserve Feedbin Summary (from RSS)
+  - Generate AI TL;DR (Kagi API, if key available)
+  - Archive Page (monolith with --no-video/audio/js)
+  - Create Reader View (Feedbin content)
     ↓
-Backup Old Data → Merge → Save New Data
+Backup Old Data → Merge → Save New Data → Generate HTML Interface
 ```
 
 ## Configuration
@@ -66,15 +77,13 @@ Backup Old Data → Merge → Save New Data
 **File**: `config.toml`
 
 ```toml
-output_dir = "./dist"              # Where to store data
-kagi_engine = "cecil"              # cecil | agnes | muriel
-kagi_summary_type = "summary"      # summary | takeaway
+output_dir = "./dist"              # Where to store data (default: ./dist)
+log_level = "INFO"                 # Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 ```
 
-**Kagi Engines**:
-- **cecil**: Fast, friendly summaries (default, consumer-grade)
-- **agnes**: Formal, technical summaries (consumer-grade)
-- **muriel**: Premium summaries ($1/summary, enterprise-grade)
+**Notes**:
+- Kagi settings are hardcoded: `engine="cecil"`, `summary_type="summary"`
+- Monolith flags are hardcoded: `--no-video`, `--no-audio`, `--no-js`
 
 ## Environment Variables
 
@@ -83,7 +92,7 @@ Required:
 - `FEEDBIN_PASSWORD` - Feedbin account password
 
 Optional:
-- `KAGI_API_KEY` - Kagi API key (if not set, summaries won't be generated)
+- `KAGI_API_KEY` - Kagi API key (if not set, AI TL;DR won't be generated, but Feedbin summaries will still be preserved)
 
 ## Output Structure
 
@@ -100,8 +109,11 @@ Optional:
       "published": "...",
       "created_at": "...",
       "entry_type": "page" | "star",
-      "tldr": "AI summary",
-      "archive_file": "archive/12345_example.com_article.html"
+      "content": "Feedbin-extracted HTML content",
+      "summary": "Feedbin RSS feed summary",
+      "tldr": "AI-generated TL;DR from Kagi",
+      "archive_file": "archive/12345_example.com_article.html",
+      "content_archive_file": "archive/content-12345_example.com_article.html"
     }
   ]
 }
