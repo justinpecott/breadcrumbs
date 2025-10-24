@@ -2,6 +2,8 @@
 
 A Python tool to archive your Feedbin starred articles and Pages feed entries with automatic AI-powered summaries using Kagi's Universal Summarizer.
 
+![Screenshot showing the Breadcrumbs web interface with a dark theme displaying a search bar at the top, filter buttons for All, Pages, and Stars below it, and a list of archived articles with titles, URLs, publication dates, and expandable summaries. Each entry shows both Feedbin summaries with hamburger icons and AI-generated TL;DR summaries with sparkle icons, along with links to reader view and web archive versions. The interface has a clean, modern design with purple accent colors and maintains the familiar Feedbin aesthetic](./screenshot.jpeg)
+
 ## Features
 
 - Fetches entries from your Feedbin "Pages" feed and starred articles
